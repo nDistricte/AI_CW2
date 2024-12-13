@@ -1,0 +1,11 @@
+Instead of running the ec24713_best_net.pth file, I will be using the ec24713_BestResult_best_net.pth in the Best_net.py file.
+
+Libraries
+pip install numpy scipy scikit-learn torch matplotlib
+
+
+IGNORE ec24713_best_net.pth
+USE ec24713_BestResult_best_net.pth
+
+Root FashionMNIST/
+Root VowelData/.
