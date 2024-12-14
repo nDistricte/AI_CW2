@@ -13,12 +13,21 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader, TensorDataset
 
+# Check if a GPU is available and use it if possible
+import torch
+print(torch.cuda.is_available())
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+print(torch.version.cuda)
+print("Is CUDA available?", torch.cuda.is_available())
+print("Current device:", device)
+print("Device count:", torch.cuda.device_count())
+
 # We suggest your GA uses at least these hyper-parameters
 # The values stated here are suboptimal and you should tune them
 # You should also consider adding more hyper-parameters
 population_size = 18 # 18
 num_generations = 12 # 12
-num_parents = 5 # 5
+num_parents = 5 # 
 
 
 
@@ -153,6 +162,8 @@ class Net(nn.Module):
             input_features = gene['neurons']
         layers.append(nn.Linear(input_features, K))
         self.network = nn.Sequential(*layers)
+        self.device = device  # Store the device used
+        self.to(self.device)
 
     # you shouldn't have to modify this method
     def forward(self, x):
@@ -298,7 +309,7 @@ def mutate(genome):
 def compute_fitness(genome, train_loader, test_loader, criterion, lr=0.01, epochs=5, D=None, K=None):
 
     # Create the model from the genome
-    model = Net(genome, D, K)
+    model = Net(genome, D, K).to(device)
 
     # suggested optimizer to train your models
     optimizer = optim.Adam(model.parameters(), lr=lr)
@@ -310,6 +321,8 @@ def compute_fitness(genome, train_loader, test_loader, criterion, lr=0.01, epoch
     for epoch in range(epochs):
         epoch_loss = 0
         for batch_idx, (data, target) in enumerate(train_loader):
+            data, target = data.to(device), target.to(device)
+            print(device)
             optimizer.zero_grad()
             output = model(data)
             loss = criterion(output, target)
@@ -329,6 +342,7 @@ def compute_fitness(genome, train_loader, test_loader, criterion, lr=0.01, epoch
     total = 0
     with torch.no_grad():
         for data, target in test_loader:
+            data, target = data.to(device), target.to(device)
             output = model(data)
             pred = output.argmax(dim=1, keepdim=True)
             target = target.argmax(dim=1, keepdim=True)
@@ -354,8 +368,10 @@ X, labels, X_val, labels_val = load_and_process_pcvc_data()
 Nsamps, Nclasses = X.shape[-1], labels.shape[-1]
 # Convert numpy arrays to PyTorch tensors. Tensors are a type of data structure used in PyTorch
 # that are similar to arrays.
-X_tensor, X_val_tensor = torch.FloatTensor(X), torch.FloatTensor(X_val)
-y_tensor, y_val_tensor = torch.FloatTensor(labels), torch.FloatTensor(labels_val)
+X_tensor, X_val_tensor = torch.FloatTensor(X).to(device), torch.FloatTensor(X_val).to(device)
+y_tensor, y_val_tensor = torch.FloatTensor(labels).to(device), torch.FloatTensor(labels_val).to(device)
+# X_tensor, X_val_tensor = torch.FloatTensor(X), torch.FloatTensor(X_val)
+# y_tensor, y_val_tensor = torch.FloatTensor(labels), torch.FloatTensor(labels_val)
 # Wrap tensors in a TensorDataset, which provides a way to access slices of tensors
 # using indexing that is useful during training because it abstracts away the data handling.
 dataset = TensorDataset(X_tensor, y_tensor)
@@ -473,6 +489,7 @@ total = 0
 with torch.no_grad():
     # Process each batch from the validation set
     for data, target in val_loader:
+        data, target = data.to(device), target.to(device)
         output = best_model(data)  # Compute the model's output
         pred = output.argmax(dim=1, keepdim=True)  # Find the predicted class
         target = target.argmax(dim=1, keepdim=True)  # Actual class
